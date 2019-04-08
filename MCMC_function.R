@@ -4,7 +4,7 @@ library(msm)
  
 
 #****************************************************************************************************
-#  calculate NCSS data van parameters
+#  calculate NCSS data van Genuchten parameters
 #****************************************************************************************************
 # i= 1
 van_cal_param <- function (sdata) {
