@@ -27,13 +27,16 @@ vignettes/*.pdf
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
 .Rproj.user
+0.ReadME.txt
 
 # Script products
 logs/
 outputs/
-
-# old
+bigdata/
+R_MCMC/
 old/
+Papers_InverseSolution/
+ManuscriptMCMC/
 
 # Oters
 *.ini

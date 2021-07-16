@@ -11,7 +11,7 @@ van_cal_param <- function (sdata) {
   # x mean swc under certain pressure head, e.g. x <- c(60,100,330,15000)
   # y mean pressure head, e.g. y <- c(0.449, 0.429, 0.423, 0.4146, 0.127)  
   # mcmc_van (x=c(60,100,330,15000), y=c(0.429, 0.423, 0.4146, 0.127)) 
-  for (i in 1:2) {
+  for (i in 1:nrow(sdata)) {
     x <- c(60,100,330,15000)
     y <- c(sdata[i,4],sdata[i,5],sdata[i,6],sdata[i,7])
     varLabsampnum <- paste(sdata[i,1])
@@ -223,7 +223,7 @@ van_cal_param <- function (sdata) {
 #  test the van_cal_param function
 #****************************************************************************************************
 
-NCSSInv <- read.csv('NCSS_MCMC2_reorder.csv')
+NCSSInv <- read.csv('data/NCSS_MCMC2_reorder.csv')
 head(NCSSInv)
 sapply(NCSSInv, class)
 length(levels(NCSSInv$labsampnum))
@@ -231,9 +231,9 @@ length(unique(NCSSInv$labsampnum))
 nrow(NCSSInv)
 
 
-pdf(file='MCMC_rosseta2_final.pdf', width = 8, height = 12)
+pdf(file='outputs/MCMC_rosseta2_final.pdf', width = 8, height = 12)
 results <- van_cal_param (NCSSInv) 
 dev.off()
 
-write.csv(results,"NCSS_MCMC2_final.csv", row.names = F)
+write.csv(results,"outputs/NCSS_MCMC2_final.csv", row.names = F)
 
