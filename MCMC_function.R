@@ -4,7 +4,7 @@ library(msm)
  
 
 #****************************************************************************************************
-#  calculate NCSS data van Genuchten parameters
+#  function for calculating NCSS data van Genuchten parameters
 #****************************************************************************************************
 # i= 1
 van_cal_param <- function (sdata) {
@@ -12,6 +12,7 @@ van_cal_param <- function (sdata) {
   # y mean pressure head, e.g. y <- c(0.449, 0.429, 0.423, 0.4146, 0.127)  
   # mcmc_van (x=c(60,100,330,15000), y=c(0.429, 0.423, 0.4146, 0.127)) 
   for (i in 1:nrow(sdata)) {
+  # for (i in 1:20) { # for testing
     x <- c(60,100,330,15000)
     y <- c(sdata[i,4],sdata[i,5],sdata[i,6],sdata[i,7])
     varLabsampnum <- paste(sdata[i,1])
@@ -46,8 +47,8 @@ van_cal_param <- function (sdata) {
       
       logratio <- sum(dnorm(y, mean = meannew, sd = sdn, log = TRUE))
       logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sdn, log = TRUE))
-      logratio <- logratio+dtnorm(n[g-1], mean=nnew, sd=sdn, lower=1, upper=3.5, log = TRUE)
-      logratio <- logratio-dtnorm(nnew, mean=n[g-1], sd=sdn, lower=1, upper=3.5, log = TRUE)
+      logratio <- logratio+dtnorm(n[g-1], mean=nnew, sd=sdn, lower=1, upper=10, log = TRUE)
+      logratio <- logratio-dtnorm(nnew, mean=n[g-1], sd=sdn, lower=1, upper=10, log = TRUE)
       
       if(log(runif(1)) < logratio){
         n[g] <- nnew
@@ -93,8 +94,8 @@ van_cal_param <- function (sdata) {
       
       logratio <- sum(dnorm(y, mean = meannew, sd = sda, log = TRUE))
       logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sda, log = TRUE))
-      logratio <- logratio+dtnorm(alpha[g-1], mean=alphanew, sd=sda, lower=0.00011, upper=0.1, log = TRUE)
-      logratio <- logratio-dtnorm(alphanew, mean=alpha[g-1], sd=sda, lower=0.00011, upper=0.1, log = TRUE)
+      logratio <- logratio+dtnorm(alpha[g-1], mean=alphanew, sd=sda, lower=0.00011, upper=1, log = TRUE)
+      logratio <- logratio-dtnorm(alphanew, mean=alpha[g-1], sd=sda, lower=0.00011, upper=1, log = TRUE)
       if(log(runif(1))<logratio){
         alpha[g] <- alphanew
       }else {alpha[g] <- alpha[g-1]}
@@ -219,21 +220,4 @@ van_cal_param <- function (sdata) {
   
 }
 
-#****************************************************************************************************
-#  test the van_cal_param function
-#****************************************************************************************************
-
-NCSSInv <- read.csv('data/NCSS_MCMC2_reorder.csv')
-head(NCSSInv)
-sapply(NCSSInv, class)
-length(levels(NCSSInv$labsampnum))
-length(unique(NCSSInv$labsampnum))
-nrow(NCSSInv)
-
-
-pdf(file='outputs/MCMC_rosseta2_final.pdf', width = 8, height = 12)
-results <- van_cal_param (NCSSInv) 
-dev.off()
-
-write.csv(results,"outputs/NCSS_MCMC2_final.csv", row.names = F)
 
