@@ -2,6 +2,104 @@
 library(MASS)
 library(msm)
  
+#****************************************************************************************************
+#  A more general function for MH-MCMC
+#****************************************************************************************************
+general_van_param <- function (sdata) {
+  
+  x <- sdata$h_cm
+  y <- sdata$VWC
+  
+  G=10000      # should set at least 10000
+  burin=2000     # should set to 2000
+  
+  n <- rep(NA,G)
+  theta_s <- rep(NA,G)
+  theta_r <- rep(NA,G)
+  alpha <- rep(NA,G)
+  
+  n[1] <- 1.5
+  theta_s[1] <- 0.56
+  theta_r[1] <- 0.18
+  alpha[1] <- 0.049
+  logratio <- 0
+  
+  sdn = 0.01 #0.01
+  sds = 0.05 #0.05
+  sdr = 0.025 #0.025
+  sda = 0.005 #0.005
+  
+  for(g in 2:G){
+    #--update n upper = 3.5 (uper = 2 for ID:89P00009)
+    nnew <-  rtnorm(1, mean=n[g-1], sd=sdn, lower=1, upper=10)
+    
+    meanold <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    meannew <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alpha[g-1]*x)^nnew)^(1-1/nnew)
+    
+    logratio <- sum(dnorm(y, mean = meannew, sd = sdn, log = TRUE))
+    logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sdn, log = TRUE))
+    logratio <- logratio+dtnorm(n[g-1], mean=nnew, sd=sdn, lower=1, upper=10, log = TRUE)
+    logratio <- logratio-dtnorm(nnew, mean=n[g-1], sd=sdn, lower=1, upper=10, log = TRUE)
+    
+    if(log(runif(1)) < logratio){
+      n[g] <- nnew
+    }else {n[g] <- n[g-1]}
+    
+    #--update theta_s
+    # if (y[1]>0.6) {var_s_upper <- 0.7}
+    # else {var_s_upper <- 0.6}
+    theta_snew <-  rtnorm(1, mean=theta_s[g-1], sd=sds, lower=0.3003, upper=0.8)
+    
+    meanold <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    meannew <- theta_r[g-1] + (theta_snew-theta_r[g-1])/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    
+    logratio <- sum(dnorm(y, mean = meannew, sd = sds, log = TRUE))
+    logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sds, log = TRUE))
+    logratio <- logratio+dtnorm(theta_s[g-1], mean=theta_snew, sd=sds, lower=0.3003, upper=0.8, log = TRUE)
+    logratio <- logratio-dtnorm(theta_snew, mean=theta_s[g-1], sd=sds, lower=0.3003, upper=0.8, log = TRUE)
+    if(log(runif(1))<logratio){
+      theta_s[g] <- theta_snew
+    }else {theta_s[g] <- theta_s[g-1]}
+    
+    #--update theta_r
+    theta_rnew <- rtnorm(1, mean= theta_r[g-1], sd=sdr, lower=0.0003, upper=0.3)
+    
+    meanold <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    meannew <- theta_rnew + (theta_s[g-1]-theta_rnew)/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    
+    logratio <- sum(dnorm(y, mean = meannew, sd = sdr, log = TRUE))
+    logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sdr, log = TRUE))
+    logratio <- logratio+dtnorm(theta_r[g-1], mean=theta_rnew, sd=sdr, lower=0.0003, upper=0.3, log = TRUE)
+    logratio <- logratio-dtnorm(theta_rnew, mean=theta_r[g-1], sd=sdr, lower=0.0003, upper=0.3, log = TRUE)
+    if(log(runif(1))<logratio){
+      theta_r[g] <- theta_rnew
+    }else {theta_r[g] <- theta_r[g-1]}
+    
+    
+    #--update alpha
+    alphanew <- rtnorm(1, mean=alpha[g-1], sd=sda, lower=0.00011, upper=0.1)
+    
+    meanold <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alpha[g-1]*x)^n[g-1])^(1-1/n[g-1])
+    meannew <- theta_r[g-1] + (theta_s[g-1]-theta_r[g-1])/ (1+(alphanew*x)^n[g-1])^(1-1/n[g-1])
+    
+    logratio <- sum(dnorm(y, mean = meannew, sd = sda, log = TRUE))
+    logratio <- logratio-sum(dnorm(y, mean = meanold, sd = sda, log = TRUE))
+    logratio <- logratio+dtnorm(alpha[g-1], mean=alphanew, sd=sda, lower=0.00011, upper=1, log = TRUE)
+    logratio <- logratio-dtnorm(alphanew, mean=alpha[g-1], sd=sda, lower=0.00011, upper=1, log = TRUE)
+    if(log(runif(1))<logratio){
+      alpha[g] <- alphanew
+    }else {alpha[g] <- alpha[g-1]}
+    
+    # print(g)
+  }
+  
+  # put parameters in data frame
+  thin = seq(burin,g,1)
+  param <- cbind(n[thin], theta_s[thin], theta_r[thin], alpha[thin])
+  colnames(param) <- c("n", "theta_s", "theta_r", "alpha")
+  
+  return (param)
+}
 
 #****************************************************************************************************
 #  function for calculating NCSS data van Genuchten parameters
