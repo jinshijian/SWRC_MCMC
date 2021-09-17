@@ -57,6 +57,15 @@ predict_vwc = function(theta_r, theta_s, alpha, n, h) {
 # dev.off()
 # 
 # write.csv(results,"outputs/NCSS_MCMC2_final.csv", row.names = F)
+
+# load data
+ncssfinal <- read.csv("outputs/NCSS_MCMC2_final.csv")
+rosettaData <- read.csv('data/RosettaFittedVG.csv', header = T)
+lu_2008_2013_data <- read.csv("data/Lu_2008_2013_Data.csv")
+
+USA <- map_data("world", region = c("USA"), exact = FALSE) %>% 
+  filter(long < 0)
+# USA <- map_data("state")
 ```
 
 ## Test MCMC for other data (data sources from literature)
@@ -128,16 +137,8 @@ write.csv(soil_I_param8, "outputs/soil_I_param8.csv", row.names = FALSE)
 
 
 
-## Load data
+## Prepare data
 ```{r load data}
-ncssfinal <- read.csv("outputs/NCSS_MCMC2_final.csv")
-rosettaData <- read.csv('data/RosettaFittedVG.csv', header = T)
-lu_2008_2013_data <- read.csv("data/Lu_2008_2013_Data.csv")
-
-USA <- map_data("world", region = c("USA"), exact = FALSE) %>% 
-  filter(long < 0)
-# USA <- map_data("state")
-
 # calculate swc at different head pressure
 h <- c(60,100,330,15000)
 ncssfinal %>% 
