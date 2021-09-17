@@ -61,6 +61,7 @@ predict_vwc = function(theta_r, theta_s, alpha, n, h) {
 
 ## Test MCMC for other data (data sources from literature)
 ```{r test other data, include = FALSE}
+# this chunk is already done, no need to run it again
 # when all data included
 soil_all_param1 <- general_van_param(lu_2008_2013_data %>% filter(soil == "I"))
 soil_all_param2 <- general_van_param(lu_2008_2013_data %>% filter(soil == "II"))
@@ -268,6 +269,11 @@ write.csv(lu_2008_2013_data_VG_param, "outputs/lu_2008_2013_data_VG_param.csv", 
   
 ```
 
+
+```{r}
+lu_2008_2013_data_VG_param <- read.csv("outputs/lu_2008_2013_data_VG_param.csv")
+```
+
 ## load RecT model results
 ```{r RecT data}
 lu_2008_rect <- read.csv("outputs/lu_2008_2013_data_VG_param_rect.csv")
@@ -289,7 +295,7 @@ lu_2008_2013_data_VG_param %>%
   labs(y=expression(Measured~SWC~('%')),
        x=expression(Predicted~SWC~('%')))
 
-ggsave("outputs/Figure_S5.jpg", width = 8, height = 4, units = "in")
+# ggsave("outputs/Figure_S5.jpg", width = 8, height = 4, units = "in")
 
 
 lu_2008_2013_data_VG_param %>% 
@@ -301,7 +307,7 @@ lu_2008_2013_data_VG_param %>%
   labs(y=expression(Measured~SWC~('%')),
        x=expression(Predicted~SWC~('%')))
 
-ggsave("outputs/Figure_S6.jpg", width = 8, height = 4, units = "in")
+# ggsave("outputs/Figure_S6.jpg", width = 8, height = 4, units = "in")
 ```
 
 
@@ -399,12 +405,9 @@ bind_rows(
 )
 
 
-
-
-
-summary(lm_model)
 lm(lu_2008_2013_data_VG_param$VWC ~ lu_2008_2013_data_VG_param$pvwc_all) -> lm_model
 lm_model$residuals
+summary(lm_model)
 
 lu_2008_2013_data_VG_param %>% filter(soil == "I") %>% nrow()
 lu_2008_2013_data_VG_param %>% filter(soil == "II") %>% nrow()
@@ -440,6 +443,10 @@ ncssfinal %>%
   labs(x = expression(Value),
        y = expression(Density))
 
+# add verticle line for each panel
+vline_low <- tibble(X = c("(a)", "(b)", "(c)", "(d)"), Z = c(0.3, 0.0003, 0.0001, 1)) 
+  
+
 rosettaData %>% 
   dplyr::select(Alpha, Npar, Theta_r, Theta_s) %>% 
   gather() %>% 
@@ -447,13 +454,24 @@ rosettaData %>%
                             key == "Theta_r" ~ "(b)",
                             key == "Npar" ~ "(c)",
                             TRUE ~ "(d)")) %>% 
+  mutate(v_low = case_when (key == "Theta_s" ~ '0.3',
+                            key == "Theta_r" ~ '0.0003',
+                            key == "Npar" ~ '1',
+                            TRUE ~ '0.0001')) %>% 
+  mutate(v_high = case_when (key == "Theta_s" ~ '0.8',
+                            key == "Theta_r" ~ '0.3',
+                            key == "Npar" ~ '10',
+                            TRUE ~ '1')) %>% 
   ggplot(aes(value)) +
   geom_density(fill = "gray") +
+  geom_rug(alpha = 0.5) +
   facet_wrap(.~Groups, scales = "free") +
-  labs(x = expression(Value),
+  geom_vline(aes(xintercept = as.numeric(v_low)), col = "red", size = 1, linetype = "dotted") +
+  geom_vline(aes(xintercept = as.numeric(v_high)), col = "red", size = 1, linetype = "dotted") +
+  labs(x = expression(VG~model~parameters),
        y = expression(Density))
 
-# ggsave("outputs/Figure2_prior.jpg", width = 8, height = 6, units = "in")
+ggsave("outputs/Figure2.jpg", width = 8, height = 6, units = "in")
   
 ```
 
@@ -1031,4 +1049,78 @@ lu_2008_rect %>%
   distinct()
 ```
 
+
+```{r diagnose convergence}
+library(coda)
+post=as.matrix(soil_all_param1)
+postmcmc=as.mcmc(post)
+raftery.diag(postmcmc,q=0.025)
+geweke.diag(post)
+
+post=as.matrix(soil_all_param2)
+postmcmc=as.mcmc(post)
+raftery.diag(postmcmc,q=0.025)
+geweke.diag(post)
+```
+
+```{r sdv testing}
+mov_mn_sdv <- function(sdata, row_n) {
+  MN <- rep(NA, nrow(sdata)-5)
+  SDV <- rep(NA, nrow(sdata)-5)
+  
+  for (i in 5:nrow(sdata)) {
+    subdata = sdata[1:i,row_n]
+    mn = mean(subdata)
+    sdv = sd(subdata)
+    
+    MN[i-5] = mn
+    SDV[i-5] = sdv
+    
+    print(i)
+  }
+  mov_m_sd <- as.data.frame(cbind(MN, SDV))
+  return (mov_m_sd)
+}
+
+# mov_m_sd <- mov_mn_sdv(soil_all_param1_test, 1)
+# mov_m_sd_s <- mov_mn_sdv(soil_all_param1_test, 2)
+# mov_m_sd_r <- mov_mn_sdv(soil_all_param1_test, 3)
+# mov_m_sd_a <- mov_mn_sdv(soil_all_param1_test, 4)
+
+```
+
+
+
+
+```{r}
+mov_m_sd %>% 
+  ggplot(aes(x = 1:nrow(mov_m_sd), y = MN)) +
+  geom_line() +
+  geom_line(aes(x = 1:nrow(mov_m_sd), y = SDV), col = "red") +
+  labs(x = expression(Sampling~time),
+       y = expression(n)) -> plot_n_mov
+
+mov_m_sd_s %>% 
+  ggplot(aes(x = 1:nrow(mov_m_sd), y = MN)) +
+  geom_line() +
+  geom_line(aes(x = 1:nrow(mov_m_sd), y = SDV), col = "red") +
+  labs(x = expression(Sampling~time),
+       y = expression(theta_s)) -> plot_s_mov
+
+mov_m_sd_r %>% 
+  ggplot(aes(x = 1:nrow(mov_m_sd), y = MN)) +
+  geom_line() +
+  geom_line(aes(x = 1:nrow(mov_m_sd), y = SDV), col = "red") +
+  labs(x = expression(Sampling~time),
+       y = expression(theta_r)) -> plot_r_mov
+
+mov_m_sd_a %>% 
+  ggplot(aes(x = 1:nrow(mov_m_sd), y = MN)) +
+  geom_line() +
+  geom_line(aes(x = 1:nrow(mov_m_sd), y = SDV), col = "red") +
+  labs(x = expression(Sampling~time),
+       y = expression(alpha)) -> plot_a_mov
+
+(plot_n_mov | plot_s_mov) / (plot_r_mov | plot_a_mov)
+```
 
